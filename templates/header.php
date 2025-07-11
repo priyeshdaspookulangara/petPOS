@@ -10,12 +10,12 @@ $page_param = isset($_GET['page']) ? $_GET['page'] : '';
 // Define a base URL for cleaner links if not using full .htaccess rewrites for assets yet
 $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
 $host = $_SERVER['HTTP_HOST'];
-$script_name = $_SERVER['SCRIPT_NAME']; // e.g., /pos_project/index.php
-$base_path = dirname($script_name); // e.g., /pos_project
-if ($base_path === '/' || $base_path === '\\') {
-    $base_path = ''; // Avoid double slashes if root
-}
-$base_url = $protocol . "://" . $host . $base_path;
+$script_name = $_SERVER['SCRIPT_NAME']; // e.g., /pos_project/index.php or /index.php
+
+// $base_url should now simply be the path to index.php
+// If index.php is in root, $script_name is /index.php
+// If in subdir like /mypos/, $script_name is /mypos/index.php
+$base_url = $protocol . "://" . $host . $script_name;
 
 ?>
 <!DOCTYPE html>
@@ -29,18 +29,25 @@ $base_url = $protocol . "://" . $host . $base_path;
     <!-- Font Awesome CDN (for icons) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <!-- Custom CSS (if any) -->
-    <?php if (file_exists($base_url . '/assets/css/style.css')): ?>
-        <link rel="stylesheet" href="<?php echo $base_url; ?>/assets/css/style.css">
+    <?php
+        // For assets, we need the path relative to the domain, not including index.php
+        $asset_base_path = dirname($script_name);
+        if ($asset_base_path === '/' || $asset_base_path === '\\') $asset_base_path = '';
+        $asset_base_url = $protocol . "://" . $host . $asset_base_path;
+    ?>
+    <?php if (file_exists(BASE_PATH . '/assets/css/style.css')): // Check actual file existence using server path ?>
+        <link rel="stylesheet" href="<?php echo $asset_base_url; ?>/assets/css/style.css">
     <?php endif; ?>
     <script>
         // Define base_url for JavaScript usage if needed for AJAX calls
-        const BASE_URL = "<?php echo $base_url; ?>/index.php"; // Points to the main router
+        // This BASE_URL should point to index.php for AJAX routing
+        const BASE_APP_URL = "<?php echo $base_url; ?>"; // $base_url now includes index.php
     </script>
 </head>
 <body>
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-    <a class="navbar-brand" href="<?php echo $base_url; ?>/index.php?page=dashboard">POS System</a>
+    <a class="navbar-brand" href="<?php echo $base_url; ?>?page=dashboard">POS System</a>
     <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
     </button>
@@ -48,10 +55,10 @@ $base_url = $protocol . "://" . $host . $base_path;
         <ul class="navbar-nav mr-auto">
             <?php if (isset($_SESSION['user_id'])): ?>
                 <li class="nav-item <?php echo ($page_param == 'dashboard' || empty($page_param) && empty($module_param)) ? 'active' : ''; ?>">
-                    <a class="nav-link" href="<?php echo $base_url; ?>/index.php?page=dashboard">Dashboard</a>
+                    <a class="nav-link" href="<?php echo $base_url; ?>?page=dashboard">Dashboard</a>
                 </li>
                 <li class="nav-item <?php echo ($module_param == 'pos') ? 'active' : ''; ?>">
-                    <a class="nav-link" href="<?php echo $base_url; ?>/index.php?module=pos">POS</a>
+                    <a class="nav-link" href="<?php echo $base_url; ?>?module=pos">POS</a>
                 </li>
 
                 <?php if (isset($_SESSION['user_role']) && $_SESSION['user_role'] == 'admin'): ?>
@@ -60,12 +67,12 @@ $base_url = $protocol . "://" . $host . $base_path;
                         Inventory
                     </a>
                     <div class="dropdown-menu" aria-labelledby="inventoryDropdown">
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>/index.php?module=inventory&action=products">Products</a>
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>/index.php?module=inventory&action=categories">Categories</a>
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>/index.php?module=inventory&action=suppliers">Suppliers</a>
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>/index.php?module=inventory&action=stock_levels">Stock Levels</a>
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>/index.php?module=inventory&action=stock_adjustments">Stock Adjustments</a>
-                         <a class="dropdown-item" href="<?php echo $base_url; ?>/index.php?module=inventory&action=reorder_alerts">Reorder Alerts</a>
+                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=inventory&action=products">Products</a>
+                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=inventory&action=categories">Categories</a>
+                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=inventory&action=suppliers">Suppliers</a>
+                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=inventory&action=stock_levels">Stock Levels</a>
+                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=inventory&action=stock_adjustments">Stock Adjustments</a>
+                         <a class="dropdown-item" href="<?php echo $base_url; ?>?module=inventory&action=reorder_alerts">Reorder Alerts</a>
                     </div>
                 </li>
                 <li class="nav-item dropdown <?php echo ($module_param == 'purchases') ? 'active' : ''; ?>">
@@ -73,9 +80,9 @@ $base_url = $protocol . "://" . $host . $base_path;
                         Purchases
                     </a>
                     <div class="dropdown-menu" aria-labelledby="purchasesDropdown">
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>/index.php?module=purchases&action=index">Manage Purchases</a>
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>/index.php?module=purchases&action=create_po">New Purchase Order</a>
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>/index.php?module=purchases&action=purchase_return">Purchase Returns</a>
+                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=purchases&action=index">Manage Purchases</a>
+                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=purchases&action=create_po">New Purchase Order</a>
+                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=purchases&action=purchase_return">Purchase Returns</a>
                     </div>
                 </li>
                  <li class="nav-item dropdown <?php echo ($module_param == 'accounts') ? 'active' : ''; ?>">
@@ -83,9 +90,9 @@ $base_url = $protocol . "://" . $host . $base_path;
                         Accounts
                     </a>
                     <div class="dropdown-menu" aria-labelledby="accountsDropdown">
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>/index.php?module=accounts&action=expenses">Expenses</a>
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>/index.php?module=accounts&action=expense_categories">Expense Categories</a>
-                        <!-- <a class="dropdown-item" href="<?php echo $base_url; ?>/index.php?module=reports&action=cash_flow">Cash Flow</a> -->
+                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=accounts&action=expenses">Expenses</a>
+                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=accounts&action=expense_categories">Expense Categories</a>
+                        <!-- <a class="dropdown-item" href="<?php echo $base_url; ?>?module=reports&action=cash_flow">Cash Flow</a> -->
                     </div>
                 </li>
                 <li class="nav-item dropdown <?php echo ($module_param == 'reports') ? 'active' : ''; ?>">
@@ -93,10 +100,10 @@ $base_url = $protocol . "://" . $host . $base_path;
                         Reports
                     </a>
                     <div class="dropdown-menu" aria-labelledby="reportsDropdown">
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>/index.php?module=reports&action=sales">Sales Report</a>
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>/index.php?module=reports&action=inventory">Inventory Report</a>
-                         <a class="dropdown-item" href="<?php echo $base_url; ?>/index.php?module=reports&action=purchases">Purchases Report</a>
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>/index.php?module=reports&action=cash_flow">Cash Flow Report</a>
+                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=reports&action=sales">Sales Report</a>
+                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=reports&action=inventory">Inventory Report</a>
+                         <a class="dropdown-item" href="<?php echo $base_url; ?>?module=reports&action=purchases">Purchases Report</a>
+                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=reports&action=cash_flow">Cash Flow Report</a>
                     </div>
                 </li>
                 <li class="nav-item dropdown <?php echo ($module_param == 'users' && $action != 'login' && $action != 'logout') ? 'active' : ''; ?>">
@@ -104,12 +111,12 @@ $base_url = $protocol . "://" . $host . $base_path;
                         Users
                     </a>
                     <div class="dropdown-menu" aria-labelledby="usersDropdown">
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>/index.php?module=users&action=index">Manage Users</a>
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>/index.php?module=users&action=create">Add User</a>
+                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=users&action=index">Manage Users</a>
+                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=users&action=create">Add User</a>
                     </div>
                 </li>
                 <li class="nav-item <?php echo ($module_param == 'settings') ? 'active' : ''; ?>">
-                    <a class="nav-link" href="<?php echo $base_url; ?>/index.php?module=settings&action=index">Settings</a>
+                    <a class="nav-link" href="<?php echo $base_url; ?>?module=settings&action=index">Settings</a>
                 </li>
                 <?php endif; ?>
 
@@ -124,11 +131,11 @@ $base_url = $protocol . "://" . $host . $base_path;
                     </span>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="<?php echo $base_url; ?>/index.php?page=logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                    <a class="nav-link" href="<?php echo $base_url; ?>?page=logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
                 </li>
             <?php else: ?>
                 <li class="nav-item <?php echo ($page_param == 'login') ? 'active' : ''; ?>">
-                    <a class="nav-link" href="<?php echo $base_url; ?>/index.php?page=login"><i class="fas fa-sign-in-alt"></i> Login</a>
+                    <a class="nav-link" href="<?php echo $base_url; ?>?page=login"><i class="fas fa-sign-in-alt"></i> Login</a>
                 </li>
             <?php endif; ?>
         </ul>

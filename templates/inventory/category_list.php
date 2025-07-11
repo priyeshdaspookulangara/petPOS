@@ -13,7 +13,7 @@ if (!defined('BASE_PATH')) {
             <h2>Manage Product Categories</h2>
         </div>
         <div class="col text-right">
-            <a href="<?php echo htmlspecialchars($base_module_url . '&sub_action=add'); ?>" class="btn btn-success">
+            <a href="<?php echo htmlspecialchars($base_module_self_url . '&sub_action=add'); ?>" class="btn btn-success">
                 <i class="fas fa-plus"></i> Add New Category
             </a>
         </div>
@@ -53,11 +53,11 @@ if (!defined('BASE_PATH')) {
                         <td><?php echo nl2br(htmlspecialchars($category['description'] ? $category['description'] : '-')); ?></td>
                         <td><?php echo htmlspecialchars($category['product_count']); ?></td>
                         <td>
-                            <a href="<?php echo htmlspecialchars($base_module_url . '&sub_action=edit&id=' . $category['id']); ?>" class="btn btn-sm btn-info" title="Edit">
+                            <a href="<?php echo htmlspecialchars($base_module_self_url . '&sub_action=edit&id=' . $category['id']); ?>" class="btn btn-sm btn-info" title="Edit">
                                 <i class="fas fa-edit"></i>
                             </a>
                             <?php if ($category['product_count'] == 0): ?>
-                            <a href="<?php echo htmlspecialchars($base_module_url . '&sub_action=delete&id=' . $category['id']); ?>"
+                            <a href="<?php echo htmlspecialchars($base_module_self_url . '&sub_action=delete&id=' . $category['id']); ?>"
                                class="btn btn-sm btn-danger" title="Delete"
                                onclick="return confirm('Are you sure you want to delete this category? This action cannot be undone.');">
                                 <i class="fas fa-trash"></i>
@@ -74,7 +74,7 @@ if (!defined('BASE_PATH')) {
         </table>
     <?php else: ?>
         <div class="alert alert-info" role="alert">
-            No categories found. <a href="<?php echo htmlspecialchars($base_module_url . '&sub_action=add'); ?>">Add the first category!</a>
+            No categories found. <a href="<?php echo htmlspecialchars($base_module_self_url . '&sub_action=add'); ?>">Add the first category!</a>
         </div>
     <?php endif; ?>
 </div>

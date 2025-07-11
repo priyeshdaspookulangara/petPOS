@@ -20,12 +20,9 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
     exit;
 }
 
-$base_module_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'];
-$script_dir_path = dirname($_SERVER['SCRIPT_NAME']);
-if ($script_dir_path === '/' || $script_dir_path === '\\') $script_dir_path = '';
-$base_module_url .= $script_dir_path . "/index.php?module=inventory&action=products";
+$base_module_self_url = APP_INDEX_URL . "?module=inventory&action=products";
 
-$page_action = isset($_GET['sub_action']) ? $_GET['sub_action'] : 'list'; // list, add, edit, delete
+$page_action = isset($_GET['sub_action']) ? $_GET['sub_action'] : 'list'; // list, add, edit, delete, export_csv, import_csv_form, process_import_csv
 $product_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
 // Initialize product data array and form errors
@@ -142,7 +139,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['message_type'] = "danger";
             }
         }
-        header("Location: " . $base_module_url);
+        header("Location: " . $base_module_self_url); // Redirect to product list
         exit;
     } else {
         // Errors found, re-render form. $product_data is already populated from POST.
@@ -167,7 +164,7 @@ if ($page_action === 'edit' && $product_id > 0 && $_SERVER['REQUEST_METHOD'] !==
     } else {
         $_SESSION['message'] = "Product not found.";
         $_SESSION['message_type'] = "warning";
-        header("Location: " . $base_module_url);
+        header("Location: " . $base_module_self_url);
         exit;
     }
 } elseif ($page_action === 'delete' && $product_id > 0) {
@@ -195,7 +192,7 @@ if ($page_action === 'edit' && $product_id > 0 && $_SERVER['REQUEST_METHOD'] !==
             $_SESSION['message_type'] = "danger";
         }
     }
-    header("Location: " . $base_module_url);
+    header("Location: " . $base_module_self_url);
     exit;
 }
 
@@ -268,7 +265,7 @@ if ($page_action === 'list') {
     if (!isset($_FILES['csv_file']) || $_FILES['csv_file']['error'] !== UPLOAD_ERR_OK) {
         $_SESSION['message'] = "Error uploading file or no file selected. Error code: " . ($_FILES['csv_file']['error'] ?? 'Unknown');
         $_SESSION['message_type'] = "danger";
-        header("Location: " . $base_module_url . "&sub_action=import_csv_form");
+        header("Location: " . $base_module_self_url . "&sub_action=import_csv_form");
         exit;
     }
 
@@ -278,7 +275,7 @@ if ($page_action === 'list') {
     if ($file_mime_type !== 'text/csv' && $file_mime_type !== 'application/csv' && $file_mime_type !== 'text/plain') {
         $_SESSION['message'] = "Invalid file type. Please upload a CSV file. Detected type: " . htmlspecialchars($file_mime_type);
         $_SESSION['message_type'] = "danger";
-        header("Location: " . $base_module_url . "&sub_action=import_csv_form");
+        header("Location: " . $base_module_self_url . "&sub_action=import_csv_form");
         exit;
     }
 
@@ -286,7 +283,7 @@ if ($page_action === 'list') {
     if (!$csv_file) {
         $_SESSION['message'] = "Failed to open uploaded file.";
         $_SESSION['message_type'] = "danger";
-        header("Location: " . $base_module_url . "&sub_action=import_csv_form");
+        header("Location: " . $base_module_self_url . "&sub_action=import_csv_form");
         exit;
     }
 
@@ -297,7 +294,7 @@ if ($page_action === 'list') {
          $_SESSION['message'] = "CSV file header does not match expected format. Expected: " . implode(', ', $expected_headers);
          $_SESSION['message_type'] = "danger";
          fclose($csv_file);
-         header("Location: " . $base_module_url . "&sub_action=import_csv_form");
+         header("Location: " . $base_module_self_url . "&sub_action=import_csv_form");
          exit;
     }
 
@@ -419,7 +416,7 @@ if ($page_action === 'list') {
         $_SESSION['message_type'] = "success";
     }
 
-    header("Location: " . $base_module_url . "&sub_action=list"); // Or back to import form to show messages
+    header("Location: " . $base_module_self_url . "&sub_action=list"); // Or back to import form to show messages
     exit;
 }
 

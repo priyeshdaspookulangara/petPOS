@@ -25,7 +25,7 @@ $submit_action = ($page_action === 'edit') ? 'edit' : 'add';
     // Session messages are displayed by header.php
     ?>
 
-    <form action="<?php echo htmlspecialchars($base_module_url); ?>" method="POST">
+    <form action="<?php echo htmlspecialchars($base_module_self_url); ?>" method="POST">
         <input type="hidden" name="form_action" value="<?php echo $submit_action; ?>">
         <?php if ($page_action === 'edit'): ?>
             <input type="hidden" name="category_id" value="<?php echo htmlspecialchars($category_id); ?>">

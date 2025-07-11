@@ -29,14 +29,14 @@ if (isset($_SESSION['user_id'])) {
 }
 
 $login_error = '';
-$base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['SCRIPT_NAME'], 2);
-
+// $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'] . dirname($_SERVER['SCRIPT_NAME'], 2);
+// Use APP_INDEX_URL for redirects
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (!isset($_POST['username']) || !isset($_POST['password'])) {
         $_SESSION['message'] = "Username and password are required.";
         $_SESSION['message_type'] = "danger";
-        header("Location: " . $base_url . "/index.php?page=login");
+        header("Location: " . APP_INDEX_URL . "?page=login");
         exit;
     }
 
@@ -46,7 +46,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (empty($username) || empty($password)) {
         $_SESSION['message'] = "Username and password cannot be empty.";
         $_SESSION['message_type'] = "danger";
-        header("Location: " . $base_url . "/index.php?page=login");
+        header("Location: " . APP_INDEX_URL . "?page=login");
         exit;
     }
 
@@ -74,7 +74,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 $_SESSION['message'] = "Login successful. Welcome, " . htmlspecialchars($user['username']) . "!";
                 $_SESSION['message_type'] = "success";
-                header("Location: " . $base_url . "/index.php?page=dashboard"); // Redirect to dashboard
+                header("Location: " . APP_INDEX_URL . "?page=dashboard"); // Redirect to dashboard
                 exit;
             } else {
                 // Invalid password
@@ -89,21 +89,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         mysqli_free_result($result);
     } else {
         // SQL query error
-        // In production, log this error instead of showing to user
-        error_log("SQL Error in dologin.php: " . mysqli_error($conn));
-        $_SESSION['message'] = "An error occurred. Please try again later.";
-        $_SESSION['message_type'] = "danger";
+        handle_error("SQL Error in dologin.php: " . $sql, "An error occurred during login.", $conn);
+        // $_SESSION['message'] is set by handle_error
     }
 
     // If login failed, redirect back to login page
-    header("Location: " . $base_url . "/index.php?page=login");
+    header("Location: " . APP_INDEX_URL . "?page=login");
     exit;
 
 } else {
     // If not a POST request, redirect to login page or show error
     $_SESSION['message'] = "Invalid request method.";
     $_SESSION['message_type'] = "warning";
-    header("Location: " . $base_url . "/index.php?page=login");
+    header("Location: " . APP_INDEX_URL . "?page=login");
     exit;
 }
 

@@ -1,6 +1,6 @@
 <?php
 // This template is included by modules/inventory/products.php when $page_action is 'list'
-// It has access to $products array and $base_module_url (for links)
+// It has access to $products array and $base_module_self_url (for links)
 
 if (!defined('BASE_PATH')) {
     die("Access denied: BASE_PATH not defined.");
@@ -18,11 +18,11 @@ function format_price($price) {
             <h2>Manage Products</h2>
         </div>
         <div class="col text-right">
-            <a href="<?php echo htmlspecialchars($base_module_url . '&sub_action=add'); ?>" class="btn btn-success mr-2">
+            <a href="<?php echo htmlspecialchars($base_module_self_url . '&sub_action=add'); ?>" class="btn btn-success mr-2">
                 <i class="fas fa-plus"></i> Add New Product
             </a>
-            <a href="<?php echo htmlspecialchars($base_module_url . '&sub_action=import_csv_form'); ?>" class="btn btn-info mr-2"><i class="fas fa-file-import"></i> Import CSV</a>
-            <a href="<?php echo htmlspecialchars($base_module_url . '&sub_action=export_csv'); ?>" class="btn btn-secondary"><i class="fas fa-file-export"></i> Export CSV</a>
+            <a href="<?php echo htmlspecialchars($base_module_self_url . '&sub_action=import_csv_form'); ?>" class="btn btn-info mr-2"><i class="fas fa-file-import"></i> Import CSV</a>
+            <a href="<?php echo htmlspecialchars($base_module_self_url . '&sub_action=export_csv'); ?>" class="btn btn-secondary"><i class="fas fa-file-export"></i> Export CSV</a>
         </div>
     </div>
 
@@ -67,11 +67,11 @@ function format_price($price) {
                             <!-- <td><?php //echo htmlspecialchars($product['barcode'] ? $product['barcode'] : '-'); ?></td> -->
                             <!-- <td><?php //if ($product['image_url']): ?> <img src="<?php //echo htmlspecialchars($product['image_url']); ?>" alt="<?php //echo htmlspecialchars($product['name']); ?>" style="width: 50px; height: auto;"> <?php //else: echo '-'; endif; ?></td> -->
                             <td>
-                                <a href="<?php echo htmlspecialchars($base_module_url . '&sub_action=edit&id=' . $product['id']); ?>" class="btn btn-sm btn-info" title="Edit">
+                                <a href="<?php echo htmlspecialchars($base_module_self_url . '&sub_action=edit&id=' . $product['id']); ?>" class="btn btn-sm btn-info" title="Edit">
                                     <i class="fas fa-edit"></i>
                                 </a>
                                 <!-- Add a check for related sales/purchases before allowing delete -->
-                                <a href="<?php echo htmlspecialchars($base_module_url . '&sub_action=delete&id=' . $product['id']); ?>"
+                                <a href="<?php echo htmlspecialchars($base_module_self_url . '&sub_action=delete&id=' . $product['id']); ?>"
                                    class="btn btn-sm btn-danger" title="Delete"
                                    onclick="return confirm('Are you sure you want to delete this product? This action cannot be undone and might affect historical sales/purchase data if not handled carefully.');">
                                     <i class="fas fa-trash"></i>
@@ -83,7 +83,7 @@ function format_price($price) {
             </table>
         <?php else: ?>
             <div class="alert alert-info" role="alert">
-                No products found. <a href="<?php echo htmlspecialchars($base_module_url . '&sub_action=add'); ?>">Add the first product!</a>
+            No products found. <a href="<?php echo htmlspecialchars($base_module_self_url . '&sub_action=add'); ?>">Add the first product!</a>
             </div>
         <?php endif; ?>
     </div>

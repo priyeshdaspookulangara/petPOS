@@ -20,11 +20,8 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
     exit;
 }
 
-$base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'];
-$script_dir_path = dirname($_SERVER['SCRIPT_NAME']);
-if ($script_dir_path === '/' || $script_dir_path === '\\') $script_dir_path = '';
-$base_url .= $script_dir_path;
-
+// $base_url for this specific module's default view (using APP_INDEX_URL)
+// $base_module_self_url = APP_INDEX_URL . "?module=settings&action=index"; // Used for redirects back to self
 
 $settings_feedback = [];
 $current_settings = [];
@@ -48,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!validate_csrf_token()) {
             handle_error("CSRF token validation failed for settings update.", "Invalid request. Please try again.");
             // Redirect or show error, prevent further processing
-            header("Location: " . $base_url . "/index.php?module=settings&action=index&csrf_error=1");
+            header("Location: " . APP_INDEX_URL . "?module=settings&action=index&csrf_error=1");
             exit;
         }
 
@@ -87,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['message_type'] = "warning";
         }
         // Redirect to the same page to show messages and prevent resubmission
-        header("Location: " . $base_url . "/index.php?module=settings&action=index");
+        header("Location: " . APP_INDEX_URL . "?module=settings&action=index");
         exit;
     }
 }

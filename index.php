@@ -8,6 +8,12 @@ require_once 'config/db.php';
 // Helper functions
 require_once 'includes/functions.php';
 
+// Define APP_INDEX_URL for consistent link generation
+$protocol_app = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+$host_app = $_SERVER['HTTP_HOST'];
+$script_name_app = $_SERVER['SCRIPT_NAME']; // Correctly points to index.php
+define('APP_INDEX_URL', $protocol_app . "://" . $host_app . $script_name_app);
+
 // Define default page
 $page = isset($_GET['page']) ? $_GET['page'] : 'login'; // Default to login if not logged in, else dashboard
 $module = isset($_GET['module']) ? $_GET['module'] : '';

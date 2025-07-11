@@ -1,6 +1,6 @@
 <?php
 // This template is included by modules/inventory/products.php for 'import_csv_form'
-// Access to $base_module_url, $report_title (reused for page title)
+// Access to $base_module_self_url, $report_title (reused for page title)
 
 if (!defined('BASE_PATH')) {
     die("Access denied: BASE_PATH not defined.");
@@ -13,10 +13,10 @@ if (!defined('BASE_PATH')) {
             <h2><?php echo htmlspecialchars($report_title ?? "Import Products from CSV"); ?></h2>
         </div>
         <div class="col text-right">
-            <a href="<?php echo htmlspecialchars($base_module_url . '&sub_action=list'); ?>" class="btn btn-secondary">
+            <a href="<?php echo htmlspecialchars($base_module_self_url . '&sub_action=list'); ?>" class="btn btn-secondary">
                 <i class="fas fa-list"></i> Back to Product List
             </a>
-             <a href="<?php echo htmlspecialchars($base_module_url . '&sub_action=export_csv'); ?>" class="btn btn-info">
+             <a href="<?php echo htmlspecialchars($base_module_self_url . '&sub_action=export_csv'); ?>" class="btn btn-info">
                 <i class="fas fa-file-export"></i> Download CSV Template/Export Products
             </a>
         </div>
@@ -40,7 +40,7 @@ if (!defined('BASE_PATH')) {
                 - Products with existing SKUs will be skipped.
             </p>
             <hr>
-            <form action="<?php echo htmlspecialchars($base_module_url . '&sub_action=process_import_csv'); ?>" method="POST" enctype="multipart/form-data">
+            <form action="<?php echo htmlspecialchars($base_module_self_url . '&sub_action=process_import_csv'); ?>" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); // Assuming generate_csrf_token() is available via functions.php ?>">
 
                 <div class="form-group">
@@ -61,6 +61,6 @@ if (!defined('BASE_PATH')) {
         </div>
     </div>
     <div class="mt-3">
-        <p><strong>Tip:</strong> It's recommended to <a href="<?php echo htmlspecialchars($base_module_url . '&sub_action=export_csv'); ?>">download the current product list as a CSV</a> first to use as a template for formatting your import file.</p>
+        <p><strong>Tip:</strong> It's recommended to <a href="<?php echo htmlspecialchars($base_module_self_url . '&sub_action=export_csv'); ?>">download the current product list as a CSV</a> first to use as a template for formatting your import file.</p>
     </div>
 </div>

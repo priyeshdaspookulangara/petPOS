@@ -20,10 +20,8 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
     exit;
 }
 
-$base_module_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'];
-$script_dir_path = dirname($_SERVER['SCRIPT_NAME']);
-if ($script_dir_path === '/' || $script_dir_path === '\\') $script_dir_path = '';
-$base_module_url .= $script_dir_path . "/index.php?module=inventory&action=categories";
+// Base URL for links within this specific module action context
+$base_module_self_url = APP_INDEX_URL . "?module=inventory&action=categories";
 
 
 $page_action = isset($_GET['sub_action']) ? $_GET['sub_action'] : 'list'; // list, add, edit, delete
@@ -80,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION['message_type'] = "danger";
             }
         }
-        header("Location: " . $base_module_url);
+        header("Location: " . $base_module_self_url); // Redirect to the list view of categories
         exit;
     } else {
         // Errors found, re-render form with errors and data
@@ -104,7 +102,7 @@ if ($page_action === 'edit' && $category_id > 0 && $_SERVER['REQUEST_METHOD'] !=
     } else {
         $_SESSION['message'] = "Category not found.";
         $_SESSION['message_type'] = "warning";
-        header("Location: " . $base_module_url);
+        header("Location: " . $base_module_self_url);
         exit;
     }
 } elseif ($page_action === 'delete' && $category_id > 0) {
@@ -131,7 +129,7 @@ if ($page_action === 'edit' && $category_id > 0 && $_SERVER['REQUEST_METHOD'] !=
             $_SESSION['message_type'] = "danger";
         }
     }
-    header("Location: " . $base_module_url);
+    header("Location: " . $base_module_self_url);
     exit;
 }
 

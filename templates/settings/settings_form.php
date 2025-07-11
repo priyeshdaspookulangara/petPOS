@@ -41,7 +41,7 @@ function get_setting_value($settings_array, $key, $default = '') {
     // If $settings_feedback is used for errors during load/display, that's fine.
     ?>
 
-    <form action="<?php echo $base_url; ?>/index.php?module=settings&action=index" method="POST">
+    <form action="<?php echo APP_INDEX_URL; ?>?module=settings&action=index" method="POST">
         <input type="hidden" name="csrf_token" value="<?php echo generate_csrf_token(); ?>">
         <div class="card mb-4">
             <div class="card-header">

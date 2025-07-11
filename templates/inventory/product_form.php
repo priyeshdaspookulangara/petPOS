@@ -5,7 +5,7 @@
 // $product_id (for edit mode)
 // $product_data (array of current product values for the form)
 // $form_errors (array of errors)
-// $base_module_url (for form action and cancel link)
+// $base_module_self_url (for form action and cancel link)
 // $categories_list (array of categories for dropdown)
 // $suppliers_list (array of suppliers for dropdown)
 
@@ -13,7 +13,7 @@ if (!defined('BASE_PATH')) {
     die("Access denied: BASE_PATH not defined.");
 }
 
-$form_mode = ($page_action === 'edit') ? 'Edit' : 'Add';
+$form_mode = ($page_action === 'edit') ? 'Edit' : 'Add'; // $page_action is from the controller
 $submit_action = ($page_action === 'edit') ? 'edit' : 'add';
 
 // Helper to get value safely and htmlspecialchars it
@@ -31,7 +31,7 @@ function val_int($data_array, $key, $default = '0') {
 <div class="container mt-4">
     <h2><?php echo $form_mode; ?> Product</h2>
 
-    <form action="<?php echo htmlspecialchars($base_module_url); ?>" method="POST" novalidate>
+    <form action="<?php echo htmlspecialchars($base_module_self_url); ?>" method="POST" novalidate>
         <input type="hidden" name="form_action" value="<?php echo $submit_action; ?>">
         <?php if ($page_action === 'edit'): ?>
             <input type="hidden" name="product_id" value="<?php echo htmlspecialchars($product_id); ?>">
@@ -175,7 +175,7 @@ function val_int($data_array, $key, $default = '0') {
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-save"></i> <?php echo $form_mode === 'Edit' ? 'Save Changes' : 'Add Product'; ?>
                     </button>
-                    <a href="<?php echo htmlspecialchars($base_module_url); ?>" class="btn btn-secondary">
+                    <a href="<?php echo htmlspecialchars($base_module_self_url); ?>" class="btn btn-secondary">
                         <i class="fas fa-times"></i> Cancel
                     </a>
                 </div>
