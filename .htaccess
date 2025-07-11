@@ -1,0 +1,128 @@
+RewriteEngine On
+RewriteBase /
+
+# Prevent direct access to .php files in certain directories (optional but good practice)
+RewriteRule ^config/.*\.php$ - [F,L]
+RewriteRule ^includes/.*\.php$ - [F,L]
+# RewriteRule ^modules/.*\.php$ - [F,L] # This might be too restrictive if modules directly serve content
+
+# To remove .php extension (optional, if you want site.com/login instead of site.com/login.php)
+# RewriteCond %{REQUEST_FILENAME} !-d
+# RewriteCond %{REQUEST_FILENAME}\.php -f
+# RewriteRule ^(.*)$ $1.php [L]
+
+# Main routing rule: all non-file/directory requests go to index.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php?route=$1 [L,QSA]
+
+# More specific rules for cleaner URLs (example)
+# This maps domain.com/pos to index.php?module=pos
+# And domain.com/inventory/products to index.php?module=inventory&action=products
+
+# Handle /module/action/id - e.g. /products/edit/123
+RewriteRule ^([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)/([0-9]+)$ index.php?module=$1&action=$2&id=$3 [L,QSA]
+
+# Handle /module/action - e.g. /products/list or /pos/index (if action is specified)
+RewriteRule ^([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)$ index.php?module=$1&action=$2 [L,QSA]
+
+# Handle /module - e.g. /pos (will default to index action for that module)
+RewriteRule ^([a-zA-Z0-9_-]+)$ index.php?module=$1 [L,QSA]
+
+
+# Note: The generic `RewriteRule ^(.*)$ index.php?route=$1 [L,QSA]` above is a common pattern
+# for front controllers. The more specific rules below it allow for structured query parameters
+# like `module` and `action`. The `index.php` will then need to parse `$_GET['route']`
+# or use the more specific `$_GET['module']` and `$_GET['action']`.
+
+# For the current `index.php` which uses `page`, `module`, `action` directly:
+# We need to adjust the RewriteRule to pass these parameters.
+# Let's simplify and assume a structure like:
+# /login -> index.php?page=login
+# /dashboard -> index.php?page=dashboard
+# /pos -> index.php?module=pos (action defaults to index)
+# /inventory/products -> index.php?module=inventory&action=products
+# /inventory/products/edit/123 -> index.php?module=inventory&action=products_edit&id=123 (or handle edit within products action)
+
+# Clear previous rules for this block for clarity
+RewriteEngine On
+RewriteBase / # Adjust if your project is in a subdirectory e.g. /mypos/
+
+# Redirect non-www to www (optional)
+# RewriteCond %{HTTP_HOST} !^www\.
+# RewriteRule ^(.*)$ http://www.%{HTTP_HOST}/$1 [R=301,L]
+
+# Deny access to sensitive files
+<Files .htaccess>
+    Require all denied
+</Files>
+<Files config/db.php>
+    Require all denied
+</Files>
+
+RewriteCond %{REQUEST_FILENAME} -s [OR]
+RewriteCond %{REQUEST_FILENAME} -l [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^.*$ - [NC,L]
+
+# Rule for page (e.g. /login, /dashboard)
+RewriteRule ^(login|logout|dashboard)$ index.php?page=$1 [NC,L,QSA]
+
+# Rule for module/action/id (e.g. /inventory/products/edit/123 or /inventory/products/123 if action is implied by id presence)
+RewriteRule ^([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)/([0-9A-Za-z_-]+)$ index.php?module=$1&action=$2&id=$3 [NC,L,QSA]
+
+# Rule for module/action (e.g. /inventory/products)
+RewriteRule ^([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)/?$ index.php?module=$1&action=$2 [NC,L,QSA]
+
+# Rule for module (e.g. /pos, /inventory) - action will default to 'index' in PHP
+RewriteRule ^([a-zA-Z0-9_-]+)/?$ index.php?module=$1 [NC,L,QSA]
+
+# If no specific rules match, and it's not a file/dir, it could be a page parameter for index.php
+# This might be redundant if the above cover all cases or you want a stricter routing.
+# RewriteCond %{REQUEST_FILENAME} !-f
+# RewriteCond %{REQUEST_FILENAME} !-d
+# RewriteRule ^([^/]+)/?$ index.php?page=$1 [L,QSA]
+
+# Default to index.php if no other rule matches (front controller)
+# This rule should be general enough if others don't catch.
+# However, the specific rules above are usually preferred.
+# If the above rules are comprehensive, this might not be needed or could conflict.
+# Let's ensure index.php is the ultimate fallback if no specific rules matched and it's not a real file/directory.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [L,QSA] # Pass the original request URI via $_SERVER['REQUEST_URI'] to index.php for parsing if needed.
+
+# The index.php will need to be updated to parse $_GET['module'], $_GET['action'], $_GET['id']
+# from these rewrite rules. The current index.php uses `page`, `module`, `action`.
+# The current index.php logic:
+# $page = isset($_GET['page']) ? $_GET['page'] : 'login';
+# $module = isset($_GET['module']) ? $_GET['module'] : '';
+# $action = isset($_GET['action']) ? $_GET['action'] : 'index';
+# This is compatible with the htaccess rules.
+# Example: /inventory/products
+#   module=inventory, action=products
+# Example: /pos
+#   module=pos (action will default to 'index' in php)
+# Example: /login
+#   page=login
+
+# Make sure FollowSymLinks is enabled or SymLinksIfOwnerMatch is set
+# Options +FollowSymLinks -MultiViews
+# Or Options +SymLinksIfOwnerMatch -MultiViews
+
+# php_value upload_max_filesize 40M (if needed, better in php.ini)
+# php_value post_max_size 40M
+# php_value max_execution_time 300
+# php_value max_input_time 300
+# php_value memory_limit 128M
+# php_flag display_errors Off (for production)
+# php_value error_log logs/php_errors.log (ensure logs directory is writable)
+# php_flag log_errors On
+# php_value error_reporting E_ALL
+# php_value session.gc_maxlifetime 7200
+# php_value session.cookie_lifetime 0
+
+# Ensure mod_rewrite is enabled on the server.
+# For Apache, typically: a2enmod rewrite && systemctl restart apache2
+# Or check httpd.conf for `LoadModule rewrite_module modules/mod_rewrite.so`
+# And `AllowOverride All` for the project directory.

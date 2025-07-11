@@ -1,0 +1,1 @@
+<?php if (!defined('BASE_PATH')) define('BASE_PATH', dirname(__DIR__, 2)); echo "<div class='container'><h1 class='mt-4'>Dashboard</h1><p>Welcome to the POS system. Full dashboard content will be here.</p></div>"; ?>
