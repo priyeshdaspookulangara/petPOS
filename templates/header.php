@@ -1,157 +1,174 @@
 <?php
-// session_start(); // Session is already started in index.php
-if (session_status() == PHP_SESSION_NONE && !headers_sent()) {
-    session_start();
+// This ensures auth functions are available if not already included.
+// It's good practice if header is included in files that might not have explicitly included auth.php.
+if (session_status() == PHP_SESSION_NONE) {
+    session_start(); // auth.php also starts session, but good to be sure.
 }
-$current_page = basename($_SERVER['PHP_SELF']);
-$module_param = isset($_GET['module']) ? $_GET['module'] : '';
-$page_param = isset($_GET['page']) ? $_GET['page'] : '';
+require_once __DIR__ . '/../includes/auth.php'; // For is_logged_in(), is_admin() etc.
 
-// Define a base URL for cleaner links if not using full .htaccess rewrites for assets yet
-$protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
-$host = $_SERVER['HTTP_HOST'];
-$script_name = $_SERVER['SCRIPT_NAME']; // e.g., /pos_project/index.php or /index.php
+// Define base path - this should ideally be a global constant defined in a central config file (e.g. db_connect.php or a new config.php)
+// For now, defining it here for template context.
+// Example: If your app is http://localhost/mypos/, $app_base_path = '/mypos/';
+// If your app is http://localhost/, $app_base_path = '/';
+$app_base_path = '/'; // IMPORTANT: Adjust this to your application's base path relative to the web server root.
 
-// $base_url should now simply be the path to index.php
-// If index.php is in root, $script_name is /index.php
-// If in subdir like /mypos/, $script_name is /mypos/index.php
-$base_url = $protocol . "://" . $host . $script_name;
+// Function to make constructing URLs easier, respecting the base path and clean URL structure (trailing slash)
+function site_url($path = '', $base_path_var = '/') {
+    $url = rtrim($base_path_var, '/'); // Remove trailing slash from base path if present
+    if (!empty($path)) {
+        $url .= '/' . ltrim($path, '/'); // Add path, ensuring single slash
+        if (substr($url, -1) !== '/' && strpos(basename($url), '.') === false) { // Add trailing slash if not present and not a file
+            $url .= '/';
+        }
+    } else {
+         $url .= '/'; // For base path itself, ensure trailing slash
+    }
+    return htmlspecialchars($url); // Sanitize for HTML output
+}
+
+$current_page_title = isset($page_title) ? htmlspecialchars($page_title) . " - POS System" : "POS System";
 
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <title><?php echo $current_page_title; ?></title>
     <!-- Bootstrap CSS CDN -->
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
     <!-- Font Awesome CDN (for icons) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-    <!-- Custom CSS (if any) -->
-    <?php
-        // For assets, we need the path relative to the domain, not including index.php
-        $asset_base_path = dirname($script_name);
-        if ($asset_base_path === '/' || $asset_base_path === '\\') $asset_base_path = '';
-        $asset_base_url = $protocol . "://" . $host . $asset_base_path;
-    ?>
-    <?php if (file_exists(BASE_PATH . '/assets/css/style.css')): // Check actual file existence using server path ?>
-        <link rel="stylesheet" href="<?php echo $asset_base_url; ?>/assets/css/style.css">
-    <?php endif; ?>
-    <script>
-        // Define base_url for JavaScript usage if needed for AJAX calls
-        // This BASE_URL should point to index.php for AJAX routing
-        const BASE_APP_URL = "<?php echo $base_url; ?>"; // $base_url now includes index.php
-    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" integrity="sha512-+4zCK9k+qNFUR5X+cKL9EIR+ZOhtIloNl9GIKS57V1MyNsYpYcUrUeQc9vNfzsWfV28IaLL3i96P9sdNyeRssA==" crossorigin="anonymous" />
+    <!-- Custom Styles (optional - create this file if needed) -->
+    <link rel="stylesheet" href="<?php echo site_url('assets/css/style.css', $app_base_path); ?>">
+    <style>
+        body { padding-top: 56px; /* Adjust if navbar height changes */ } /* For fixed navbar */
+        .main-content { padding: 20px; }
+        .footer { background-color: #f8f9fa; padding: 20px 0; text-align: center; margin-top: auto; }
+        /* Add more global styles here or in style.css */
+    </style>
 </head>
-<body>
+<body class="d-flex flex-column min-vh-100"> <?php // Flex classes for sticky footer ?>
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-    <a class="navbar-brand" href="<?php echo $base_url; ?>?page=dashboard">POS System</a>
-    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+    <a class="navbar-brand" href="<?php echo site_url('', $app_base_path); ?>">
+        <i class="fas fa-cash-register"></i> <!-- Icon for POS -->
+        <?php
+            // Display store name from settings if available
+            // This requires $mysqli to be available if not already connected.
+            // For simplicity in a header, it's better if settings are loaded once and stored in session or a global var.
+            // For now, let's assume a default or skip direct DB query in header.
+            echo isset($_SESSION['store_name']) ? htmlspecialchars($_SESSION['store_name']) : 'POS System';
+        ?>
+    </a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
     </button>
-    <div class="collapse navbar-collapse" id="navbarNav">
+    <div class="collapse navbar-collapse" id="navbarNavDropdown">
         <ul class="navbar-nav mr-auto">
-            <?php if (isset($_SESSION['user_id'])): ?>
-                <li class="nav-item <?php echo ($page_param == 'dashboard' || empty($page_param) && empty($module_param)) ? 'active' : ''; ?>">
-                    <a class="nav-link" href="<?php echo $base_url; ?>?page=dashboard">Dashboard</a>
+            <?php if (is_logged_in()): ?>
+                <li class="nav-item">
+                    <a class="nav-link" href="<?php echo site_url('pos', $app_base_path); ?>"><i class="fas fa-th-large"></i> POS</a>
                 </li>
-                <li class="nav-item <?php echo ($module_param == 'pos') ? 'active' : ''; ?>">
-                    <a class="nav-link" href="<?php echo $base_url; ?>?module=pos">POS</a>
-                </li>
-
-                <?php if (isset($_SESSION['user_role']) && $_SESSION['user_role'] == 'admin'): ?>
-                <li class="nav-item dropdown <?php echo ($module_param == 'inventory') ? 'active' : ''; ?>">
-                    <a class="nav-link dropdown-toggle" href="#" id="inventoryDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        Inventory
-                    </a>
-                    <div class="dropdown-menu" aria-labelledby="inventoryDropdown">
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=inventory&action=products">Products</a>
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=inventory&action=categories">Categories</a>
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=inventory&action=suppliers">Suppliers</a>
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=inventory&action=stock_levels">Stock Levels</a>
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=inventory&action=stock_adjustments">Stock Adjustments</a>
-                         <a class="dropdown-item" href="<?php echo $base_url; ?>?module=inventory&action=reorder_alerts">Reorder Alerts</a>
-                    </div>
-                </li>
-                <li class="nav-item dropdown <?php echo ($module_param == 'purchases') ? 'active' : ''; ?>">
-                    <a class="nav-link dropdown-toggle" href="#" id="purchasesDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        Purchases
-                    </a>
-                    <div class="dropdown-menu" aria-labelledby="purchasesDropdown">
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=purchases&action=index">Manage Purchases</a>
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=purchases&action=create_po">New Purchase Order</a>
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=purchases&action=purchase_return">Purchase Returns</a>
-                    </div>
-                </li>
-                 <li class="nav-item dropdown <?php echo ($module_param == 'accounts') ? 'active' : ''; ?>">
-                    <a class="nav-link dropdown-toggle" href="#" id="accountsDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        Accounts
-                    </a>
-                    <div class="dropdown-menu" aria-labelledby="accountsDropdown">
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=accounts&action=expenses">Expenses</a>
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=accounts&action=expense_categories">Expense Categories</a>
-                        <!-- <a class="dropdown-item" href="<?php echo $base_url; ?>?module=reports&action=cash_flow">Cash Flow</a> -->
-                    </div>
-                </li>
-                <li class="nav-item dropdown <?php echo ($module_param == 'reports') ? 'active' : ''; ?>">
-                    <a class="nav-link dropdown-toggle" href="#" id="reportsDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        Reports
-                    </a>
-                    <div class="dropdown-menu" aria-labelledby="reportsDropdown">
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=reports&action=sales">Sales Report</a>
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=reports&action=inventory">Inventory Report</a>
-                         <a class="dropdown-item" href="<?php echo $base_url; ?>?module=reports&action=purchases">Purchases Report</a>
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=reports&action=cash_flow">Cash Flow Report</a>
-                    </div>
-                </li>
-                <li class="nav-item dropdown <?php echo ($module_param == 'users' && $action != 'login' && $action != 'logout') ? 'active' : ''; ?>">
-                    <a class="nav-link dropdown-toggle" href="#" id="usersDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        Users
-                    </a>
-                    <div class="dropdown-menu" aria-labelledby="usersDropdown">
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=users&action=index">Manage Users</a>
-                        <a class="dropdown-item" href="<?php echo $base_url; ?>?module=users&action=create">Add User</a>
-                    </div>
-                </li>
-                <li class="nav-item <?php echo ($module_param == 'settings') ? 'active' : ''; ?>">
-                    <a class="nav-link" href="<?php echo $base_url; ?>?module=settings&action=index">Settings</a>
-                </li>
-                <?php endif; ?>
-
-            <?php endif; ?>
+                <?php if (is_admin()): ?>
+                    <li class="nav-item">
+                        <a class="nav-link" href="<?php echo site_url('admin/dashboard', $app_base_path); ?>"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="adminMenuInventory" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fas fa-boxes"></i> Inventory
+                        </a>
+                        <div class="dropdown-menu" aria-labelledby="adminMenuInventory">
+                            <a class="dropdown-item" href="<?php echo site_url('admin/products', $app_base_path); ?>">Products</a>
+                            <a class="dropdown-item" href="<?php echo site_url('admin/categories', $app_base_path); ?>">Categories</a>
+                            <a class="dropdown-item" href="<?php echo site_url('admin/suppliers', $app_base_path); ?>">Suppliers</a>
+                            <a class="dropdown-item" href="<?php echo site_url('admin/stock-adjustments', $app_base_path); ?>">Stock Adjustments</a>
+                            <a class="dropdown-item" href="<?php echo site_url('admin/reorder-alerts', $app_base_path); ?>">Reorder Alerts</a>
+                        </div>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="adminMenuPurchases" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fas fa-truck-loading"></i> Purchases
+                        </a>
+                        <div class="dropdown-menu" aria-labelledby="adminMenuPurchases">
+                            <a class="dropdown-item" href="<?php echo site_url('admin/purchase-orders', $app_base_path); ?>">Purchase Orders</a>
+                            <a class="dropdown-item" href="<?php echo site_url('admin/purchase-returns', $app_base_path); ?>">Purchase Returns</a>
+                        </div>
+                    </li>
+                     <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="adminMenuSales" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fas fa-chart-line"></i> Sales
+                        </a>
+                        <div class="dropdown-menu" aria-labelledby="adminMenuSales">
+                            <a class="dropdown-item" href="<?php echo site_url('admin/sales-history', $app_base_path); ?>">Sales History</a>
+                            <a class="dropdown-item" href="<?php echo site_url('admin/sales-returns', $app_base_path); ?>">Sales Returns</a>
+                        </div>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="adminMenuAccounts" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fas fa-file-invoice-dollar"></i> Accounts
+                        </a>
+                        <div class="dropdown-menu" aria-labelledby="adminMenuAccounts">
+                            <a class="dropdown-item" href="<?php echo site_url('admin/expenses', $app_base_path); ?>">Expenses</a>
+                            <a class="dropdown-item" href="<?php echo site_url('admin/expense-categories', $app_base_path); ?>">Expense Categories</a>
+                        </div>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="adminMenuReports" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fas fa-chart-pie"></i> Reports
+                        </a>
+                        <div class="dropdown-menu" aria-labelledby="adminMenuReports">
+                            <a class="dropdown-item" href="<?php echo site_url('admin/reports/sales', $app_base_path); ?>">Sales Reports</a>
+                            <a class="dropdown-item" href="<?php echo site_url('admin/reports/inventory', $app_base_path); ?>">Inventory Reports</a>
+                            <a class="dropdown-item" href="<?php echo site_url('admin/reports/financial', $app_base_path); ?>">Financial Reports</a>
+                        </div>
+                    </li>
+                <?php endif; // end is_admin ?>
+            <?php endif; // end is_logged_in ?>
         </ul>
         <ul class="navbar-nav ml-auto">
-            <?php if (isset($_SESSION['user_id'])): ?>
-                <li class="nav-item">
-                    <span class="navbar-text mr-3">
-                        Welcome, <?php echo isset($_SESSION['username']) ? htmlspecialchars($_SESSION['username']) : 'User'; ?>!
-                        (<?php echo isset($_SESSION['user_role']) ? htmlspecialchars(ucfirst($_SESSION['user_role'])) : ''; ?>)
-                    </span>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="<?php echo $base_url; ?>?page=logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
+            <?php if (is_logged_in()): ?>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="fas fa-user-circle"></i> <?php echo htmlspecialchars(get_current_user_username()); ?> (<?php echo htmlspecialchars(get_current_user_role()); ?>)
+                    </a>
+                    <div class="dropdown-menu dropdown-menu-right" aria-labelledby="userDropdown">
+                        <!-- <a class="dropdown-item" href="#">Profile</a> -->
+                        <?php if (is_admin()): ?>
+                            <a class="dropdown-item" href="<?php echo site_url('admin/users', $app_base_path); ?>"><i class="fas fa-users-cog"></i> User Management</a>
+                            <a class="dropdown-item" href="<?php echo site_url('admin/settings', $app_base_path); ?>"><i class="fas fa-cogs"></i> Settings</a>
+                            <div class="dropdown-divider"></div>
+                        <?php endif; ?>
+                        <a class="dropdown-item" href="<?php echo site_url('logout', $app_base_path); ?>"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                    </div>
                 </li>
             <?php else: ?>
-                <li class="nav-item <?php echo ($page_param == 'login') ? 'active' : ''; ?>">
-                    <a class="nav-link" href="<?php echo $base_url; ?>?page=login"><i class="fas fa-sign-in-alt"></i> Login</a>
+                <li class="nav-item">
+                    <a class="nav-link" href="<?php echo site_url('login', $app_base_path); ?>"><i class="fas fa-sign-in-alt"></i> Login</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="<?php echo site_url('register', $app_base_path); ?>"><i class="fas fa-user-plus"></i> Register</a>
                 </li>
             <?php endif; ?>
         </ul>
     </div>
 </nav>
 
-<main role="main" class="container-fluid mt-4"> <!-- Changed to container-fluid for wider content area -->
-    <!-- Content will be loaded here by index.php -->
+<main role="main" class="container-fluid main-content">
+    <?php // Main page content will be included here by the specific page ?>
     <?php
-    // Display session messages (e.g., success or error messages after an action)
-    if (isset($_SESSION['message']) && isset($_SESSION['message_type'])) {
-        echo '<div class="alert alert-' . $_SESSION['message_type'] . ' alert-dismissible fade show" role="alert">';
-        echo $_SESSION['message'];
-        echo '<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>';
-        echo '</div>';
-        unset($_SESSION['message']);
-        unset($_SESSION['message_type']);
-    }
+    // Display session messages (e.g., success or error after an action)
+    // To use: $_SESSION['flash_message'] = "Success!"; $_SESSION['flash_message_type'] = "success"; // (or danger, warning, info)
+    if (isset($_SESSION['flash_message'])):
+    ?>
+        <div class="alert alert-<?php echo htmlspecialchars($_SESSION['flash_message_type']); ?> alert-dismissible fade show" role="alert">
+            <?php echo htmlspecialchars($_SESSION['flash_message']); ?>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    <?php
+        unset($_SESSION['flash_message']);
+        unset($_SESSION['flash_message_type']);
+    endif;
     ?>
