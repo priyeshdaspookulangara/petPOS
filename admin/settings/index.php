@@ -14,6 +14,7 @@ $setting_keys = [
     'tax_rate_percentage' => 'Tax Rate (%)',
     'currency_symbol' => 'Currency Symbol',
     'receipt_footer_message' => 'Receipt Footer Message',
+    'store_logo_url' => 'Store Logo', // Add logo to managed keys
     'default_user_role' => 'Default New User Role',
     'low_stock_threshold' => 'Low Stock Alert Threshold'
 ];
@@ -43,43 +44,67 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $all_updates_successful = true;
     $errors = [];
 
+    // Handle Logo Upload first
+    if (isset($_FILES['store_logo_file']) && $_FILES['store_logo_file']['error'] == UPLOAD_ERR_OK) {
+        $upload_dir_logo = __DIR__ . '/../../assets/uploads/logo/';
+        if (!is_dir($upload_dir_logo)) {
+            mkdir($upload_dir_logo, 0775, true);
+        }
+        $logo_ext = strtolower(pathinfo($_FILES['store_logo_file']['name'], PATHINFO_EXTENSION));
+        // Use a fixed name for simplicity, so we don't have to update the path in settings constantly if file type changes
+        $logo_filename = 'store_logo.' . $logo_ext;
+        $target_logo_file = $upload_dir_logo . $logo_filename;
+        $allowed_logo_types = ['jpg', 'jpeg', 'png', 'gif'];
+
+        if ($_FILES['store_logo_file']['size'] > 1 * 1024 * 1024) { // Max 1MB
+            $errors[] = "Store Logo file is too large (Max 1MB).";
+        } elseif (!in_array($logo_ext, $allowed_logo_types)) {
+            $errors[] = "Invalid logo file type. Allowed: " . implode(', ', $allowed_logo_types);
+        } elseif (move_uploaded_file($_FILES['store_logo_file']['tmp_name'], $target_logo_file)) {
+            $logo_db_path = 'assets/uploads/logo/' . $logo_filename;
+            // Save this path to settings DB
+            $key = 'store_logo_url';
+            $value = sanitize_input($mysqli, $logo_db_path);
+            $sql_update_logo = "INSERT INTO settings (setting_key, setting_value) VALUES ('$key', '$value') ON DUPLICATE KEY UPDATE setting_value = '$value'";
+            if (!$mysqli->query($sql_update_logo)) {
+                $errors[] = "Error saving logo path to database: " . $mysqli->error;
+            } else {
+                $current_settings[$key] = $value; // Update for immediate display
+            }
+        } else {
+            $errors[] = "Sorry, there was an error uploading the logo.";
+        }
+    }
+
+
+    // Handle other text-based settings
     foreach ($setting_keys as $key => $label) {
+        if ($key === 'store_logo_url') continue; // Skip logo url, handled above
+
         if (isset($_POST[$key])) {
             $value = sanitize_input($mysqli, $_POST[$key]);
 
-            // Specific validation if needed
             if ($key === 'tax_rate_percentage' && !is_numeric($value) && !empty($value)) {
                 $errors[] = "Tax Rate must be a numeric value.";
-                $current_settings[$key] = $value; // Keep user input for form repopulation
-                continue;
+                $current_settings[$key] = $value; continue;
             }
             if ($key === 'low_stock_threshold' && !ctype_digit($value) && !empty($value)) {
                  $errors[] = "Low Stock Threshold must be a whole number.";
-                 $current_settings[$key] = $value;
-                 continue;
+                 $current_settings[$key] = $value; continue;
             }
              if ($key === 'default_user_role' && !in_array($value, ['Admin', 'Cashier'])) {
                 $errors[] = "Invalid Default User Role.";
-                $current_settings[$key] = $value;
-                continue;
+                $current_settings[$key] = $value; continue;
             }
 
-
-            // Use INSERT ... ON DUPLICATE KEY UPDATE to handle both new and existing settings
-            // Ensure setting_key is UNIQUE in your DB schema for this to work correctly.
-            $sql_update = "INSERT INTO settings (setting_key, setting_value)
-                           VALUES ('$key', '$value')
-                           ON DUPLICATE KEY UPDATE setting_value = '$value'";
+            $sql_update = "INSERT INTO settings (setting_key, setting_value) VALUES ('$key', '$value') ON DUPLICATE KEY UPDATE setting_value = '$value'";
 
             if (!$mysqli->query($sql_update)) {
                 $all_updates_successful = false;
                 $errors[] = "Error updating " . htmlspecialchars($label) . ": " . htmlspecialchars($mysqli->error);
             } else {
-                // Update current settings array for immediate display and session if needed
-                $current_settings[$key] = stripslashes($value); // Display the raw value post-update
-                if ($key === 'store_name') { // Update session store name if changed
-                    $_SESSION['store_name'] = stripslashes($value);
-                }
+                $current_settings[$key] = stripslashes($value);
+                if ($key === 'store_name') $_SESSION['store_name'] = stripslashes($value);
             }
         }
     }
@@ -94,7 +119,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
          $_SESSION['flash_message'] = "Some settings might not have been updated due to errors.";
         $_SESSION['flash_message_type'] = "warning";
     }
-    // No redirect, just show messages and updated form.
 }
 
 
@@ -109,7 +133,7 @@ include __DIR__ . '/../../templates/header.php';
             <h6 class="m-0 font-weight-bold text-primary">Configure System Settings</h6>
         </div>
         <div class="card-body">
-            <form action="<?php echo site_url('admin/settings', $app_base_path); ?>" method="post">
+            <form action="<?php echo site_url('admin/settings', $app_base_path); ?>" method="post" enctype="multipart/form-data">
                 <?php foreach ($setting_keys as $key => $label): ?>
                     <?php $value = isset($current_settings[$key]) ? htmlspecialchars($current_settings[$key]) : ''; ?>
                     <div class="form-group row">
@@ -131,6 +155,14 @@ include __DIR__ . '/../../templates/header.php';
                                 </div>
                             <?php elseif ($key === 'low_stock_threshold'): ?>
                                 <input type="number" step="1" min="0" class="form-control" id="<?php echo $key; ?>" name="<?php echo $key; ?>" value="<?php echo $value; ?>">
+                            <?php elseif ($key === 'store_logo_url'): ?>
+                                <input type="file" class="form-control-file" id="store_logo_file" name="store_logo_file" accept="image/png, image/jpeg, image/gif">
+                                <?php if (!empty($value)): ?>
+                                <div class="mt-2">
+                                    <small class="form-text text-muted">Current Logo:</small>
+                                    <img src="<?php echo site_url($value, $app_base_path); ?>" alt="Current Store Logo" style="max-width: 150px; max-height: 100px; background-color: #f8f9fa; padding: 5px; border-radius: 5px;">
+                                </div>
+                                <?php endif; ?>
                             <?php else: ?>
                                 <input type="text" class="form-control" id="<?php echo $key; ?>" name="<?php echo $key; ?>" value="<?php echo $value; ?>">
                             <?php endif; ?>

@@ -25,7 +25,7 @@ $sale_items = [];
 $store_settings = [];
 
 // Fetch store settings
-$settings_keys = ['store_name', 'store_address', 'receipt_footer_message', 'currency_symbol'];
+$settings_keys = ['store_name', 'store_address', 'receipt_footer_message', 'currency_symbol', 'store_logo_url'];
 $keys_in_sql = "'" . implode("','", $settings_keys) . "'";
 $sql_settings = "SELECT setting_key, setting_value FROM settings WHERE setting_key IN ($keys_in_sql)";
 $res_settings = $mysqli->query($sql_settings);
@@ -36,6 +36,7 @@ if($res_settings){
     $res_settings->free();
 }
 $currency_symbol = $store_settings['currency_symbol'] ?? '$';
+$store_logo_url = $store_settings['store_logo_url'] ?? '';
 
 
 // Fetch sale details
