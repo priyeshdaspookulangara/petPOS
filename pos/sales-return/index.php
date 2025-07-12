@@ -67,38 +67,109 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['search_sale_submit'])
     }
 }
 
-// Handle processing the return (placeholder for full logic)
+// Handle processing the return (Full Implementation)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['process_return_submit'])) {
     $original_sale_id_for_return = isset($_POST['original_sale_id']) ? (int)$_POST['original_sale_id'] : null;
     $return_reason = isset($_POST['return_reason']) ? sanitize_input($mysqli, $_POST['return_reason']) : '';
-    $items_to_return_data = isset($_POST['return_items']) ? $_POST['return_items'] : []; // Expects array like [product_id => ['quantity' => x, 'price' => y]]
+    $items_to_return_data = isset($_POST['return_items']) ? $_POST['return_items'] : [];
 
     if (empty($original_sale_id_for_return)) {
         $_SESSION['flash_message'] = "Original sale information is missing.";
         $_SESSION['flash_message_type'] = "danger";
     } elseif (empty($items_to_return_data)) {
-        $_SESSION['flash_message'] = "No items selected for return.";
+        $_SESSION['flash_message'] = "No items selected for return. Please check the 'Return?' box for at least one item.";
         $_SESSION['flash_message_type'] = "warning";
     } else {
-        // --- Full Return Processing Logic (Next Step/Phase) ---
-        // 1. Validate items_to_return_data (quantities against sold & previously returned, prices)
-        // 2. Calculate total_refund_amount
-        // 3. Start DB Transaction
-        // 4. Insert into `sales_returns`
-        // 5. Insert each item into `sales_return_items`
-        // 6. Increment `products.current_stock` for each returned item
-        // 7. Commit or Rollback
-        // 8. Generate return receipt / credit note
-        // --- End of Full Logic Placeholder ---
+        $mysqli->begin_transaction();
+        try {
+            $total_refund_amount = 0;
+            $validated_return_items = [];
 
-        $_SESSION['flash_message'] = "Return processing logic is not yet fully implemented. Data received.";
-        $_SESSION['flash_message_type'] = "info";
-        // For now, just clear the search to avoid resubmitting the same form
-        // header("Location: " . site_url('pos/sales-return', $app_base_path));
-        // exit;
-        $searched_sale = null; // Clear search results after "processing"
-        $searched_sale_items = [];
-        $search_receipt_no = '';
+            // --- Server-side validation of each item ---
+            foreach ($items_to_return_data as $product_id => $details) {
+                if (!isset($details['selected'])) continue; // Skip if checkbox wasn't checked
+
+                $product_id = (int)$product_id;
+                $return_qty = isset($details['quantity']) ? (int)$details['quantity'] : 0;
+                $price_at_sale = isset($details['price_at_sale']) ? (float)$details['price_at_sale'] : -1;
+
+                if ($return_qty <= 0) {
+                    throw new Exception("Return quantity for Product ID $product_id must be positive.");
+                }
+                if ($price_at_sale < 0) {
+                    throw new Exception("Invalid price for returned Product ID $product_id.");
+                }
+
+                // Fetch original sale item details and previous returns to validate quantity
+                $sql_validate_item = "SELECT
+                                        si.quantity as sold_qty,
+                                        (SELECT SUM(sri.quantity) FROM sales_return_items sri JOIN sales_returns sr ON sri.sales_return_id = sr.id WHERE sr.original_sale_id = $original_sale_id_for_return AND sri.product_id = $product_id) as prev_returned_qty
+                                      FROM sale_items si
+                                      WHERE si.sale_id = $original_sale_id_for_return AND si.product_id = $product_id";
+                $res_validate = $mysqli->query($sql_validate_item);
+                if (!$res_validate || $res_validate->num_rows === 0) {
+                    throw new Exception("Product ID $product_id was not found in the original sale.");
+                }
+                $validation_data = $res_validate->fetch_assoc();
+                $returnable_qty = (int)$validation_data['sold_qty'] - (int)($validation_data['prev_returned_qty'] ?? 0);
+
+                if ($return_qty > $returnable_qty) {
+                    throw new Exception("Cannot return quantity $return_qty for Product ID $product_id. Only $returnable_qty are available to be returned.");
+                }
+
+                $validated_return_items[] = [
+                    'product_id' => $product_id,
+                    'quantity' => $return_qty,
+                    'price_per_item' => $price_at_sale,
+                    'item_total_refund' => $return_qty * $price_at_sale
+                ];
+                $total_refund_amount += ($return_qty * $price_at_sale);
+            }
+
+            if (empty($validated_return_items)) {
+                 throw new Exception("No valid items were processed for return.");
+            }
+
+            // 1. Insert into `sales_returns` table
+            $return_receipt_no = 'RT-' . time() . '-' . mt_rand(100, 999);
+            $sql_insert_return = "INSERT INTO sales_returns (original_sale_id, return_receipt_no, return_date, total_refund_amount, reason, user_id)
+                                  VALUES ($original_sale_id_for_return, '$return_receipt_no', NOW(), $total_refund_amount, '$return_reason', $current_user_id)";
+            if (!$mysqli->query($sql_insert_return)) {
+                throw new Exception("Error saving sales return record: " . $mysqli->error);
+            }
+            $sales_return_id = $mysqli->insert_id;
+
+            // 2. Insert items and update stock
+            foreach ($validated_return_items as $item) {
+                // Insert into `sales_return_items`
+                $sql_insert_item = "INSERT INTO sales_return_items (sales_return_id, product_id, quantity, refund_price_per_item, item_total_refund)
+                                    VALUES ($sales_return_id, {$item['product_id']}, {$item['quantity']}, {$item['price_per_item']}, {$item['item_total_refund']})";
+                if (!$mysqli->query($sql_insert_item)) {
+                    throw new Exception("Error saving returned item (Product ID {$item['product_id']}): " . $mysqli->error);
+                }
+
+                // Increment product stock
+                $sql_update_stock = "UPDATE products SET current_stock = current_stock + {$item['quantity']} WHERE id = {$item['product_id']}";
+                if (!$mysqli->query($sql_update_stock)) {
+                    throw new Exception("Error updating stock for returned product ID {$item['product_id']}: " . $mysqli->error);
+                }
+            }
+
+            $mysqli->commit();
+            $_SESSION['flash_message'] = "Sales return processed successfully! Return Receipt No: $return_receipt_no";
+            $_SESSION['flash_message_type'] = "success";
+            // Redirect to the new return receipt page
+            header("Location: " . site_url('pos/sales-return-receipt/?id=' . $sales_return_id, $app_base_path));
+            exit;
+
+        } catch (Exception $e) {
+            $mysqli->rollback();
+            $_SESSION['flash_message'] = "Return processing failed: " . htmlspecialchars($e->getMessage());
+            $_SESSION['flash_message_type'] = "danger";
+            // To allow user to correct, we should repopulate the form.
+            // This requires keeping $searched_sale and $searched_sale_items available after POST error.
+            // For now, we just show the error. A full redirect loses the context.
+        }
     }
 }
 
